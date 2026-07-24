@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import requests
 import streamlit as st
@@ -34,6 +35,7 @@ AIO_USERNAME = _aio_cred("AIO_USERNAME")
 AIO_KEY = _aio_cred("AIO_KEY")
 FEED_NAME = "where"
 POLL_SECONDS = 300  # 自動同期間隔（5分）
+TZ_TOKYO = ZoneInfo("Asia/Tokyo")
 HISTORY_LIMIT = 8
 
 
@@ -98,7 +100,7 @@ def _parse_feed_item(item: dict) -> tuple[Optional[str], Optional[datetime]]:
     created = item.get("created_at")
     dt = None
     if created:
-        dt = datetime.fromisoformat(created.replace("Z", "+00:00")).astimezone()
+        dt = datetime.fromisoformat(created.replace("Z", "+00:00")).astimezone(TZ_TOKYO)
     return value, dt
 
 
@@ -146,7 +148,7 @@ def sync_from_adafruit() -> None:
     items, err = fetch_feed(limit=HISTORY_LIMIT)
     st.session_state.feed_error = err
     st.session_state.history = items
-    st.session_state.synced_at = datetime.now().astimezone()
+    st.session_state.synced_at = datetime.now(TZ_TOKYO)
     if items:
         latest = items[0]
         val = latest["value"]
@@ -157,6 +159,18 @@ def sync_from_adafruit() -> None:
             st.session_state.feed_error = (
                 err or f"未知の値「{val}」（HOME/CAMPUS/LAB/ELSE 以外）"
             )
+
+
+
+def format_jst(dt: Optional[datetime]) -> str:
+    """最終更新などの表示用。常に日本時間。"""
+    if dt is None or not hasattr(dt, "strftime"):
+        return "—"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=TZ_TOKYO)
+    else:
+        dt = dt.astimezone(TZ_TOKYO)
+    return dt.strftime("%m/%d %H:%M")
 
 
 def dial_svg_html(active: Optional[str]) -> str:
@@ -490,11 +504,7 @@ m1, m2 = st.columns(2)
 with m1:
     st.metric("現在地", STATUSES[active]["label"] if active in STATUSES else "—")
 with m2:
-    if st.session_state.last_sent_time:
-        t = st.session_state.last_sent_time
-        st.metric("最終更新", t.strftime("%m/%d %H:%M") if hasattr(t, "strftime") else str(t))
-    else:
-        st.metric("最終更新", "—")
+    st.metric("最終更新", format_jst(st.session_state.last_sent_time))
 
 if st.session_state.feed_error:
     st.warning(f"フィード: {st.session_state.feed_error}")
