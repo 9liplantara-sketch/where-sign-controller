@@ -1,12 +1,55 @@
-# Where is Nagi? - Adafruit IO 位置送信アプリ
+# Where is TARA? - Adafruit IO 位置送信アプリ
 
-Adafruit IO を介して MQTT 接続された M5Stack ATOM Lite に「現在地」を送信するための Streamlit Web アプリケーションです。
+Adafruit IO の `where` フィードを読み取り、4色円盤サインの状態を表示するビュー専用アプリです（実機への操作・送信は行いません）。
 
 ## 機能
 
-- 4つの場所（研究室、大学構内、自宅、その他）から選択して送信
-- 最後に送信した値と時刻を表示
+- **表示専用**（このアプリから実機は操作できません）
+
+- 現在地と最終更新時刻を表示
 - エラーハンドリング付き
+
+
+## UI（4色円盤）
+
+実物サインの写真に合わせて、光沢付きの4色円盤を表示します。
+
+| 位置 | 色 | 送信値 | 意味 |
+|------|-----|--------|------|
+| 上 | 緑 | `CAMPUS` | 通勤・構内 |
+| 右 | 青 | `LAB` | 研究室 |
+| 下 | 黒 | `ELSE` | その他 |
+| 左 | 赤 | `HOME` | 自宅 |
+
+起動時および「フィードから最新を再取得」で [Adafruit IO `where`](https://io.adafruit.com/ta_rabo/feeds/where) の最新値を読み取り、円盤を回転させます。
+
+## GPS / 位置情報との連携
+
+GPS 側の自動化は、このリポジトリ外（iPhone ショートカット / IFTTT の位置情報アプレットなど）から **同じ Adafruit IO フィード `where` に値を POST** する構成が想定されています。
+
+流れ:
+
+```
+スマホ位置（ジオフェンス等） → Adafruit IO feeds/where → ATOM Lite（実機）
+                                              ↑
+                              この Streamlit アプリ（手動送信・表示）
+```
+
+実データ例（2026-04 時点）: `HOME` / `CAMPUS` / `LAB` がフィードに蓄積。
+
+
+## Adafruit IO `where` との同期
+
+円盤の表示は **Adafruit IO の `where` フィード** から取得します。
+
+```bash
+GET https://io.adafruit.com/api/v2/{AIO_USERNAME}/feeds/where/data?limit=8
+Header: X-AIO-Key: {AIO_KEY}
+```
+
+- 起動時・「今すぐ同期」・自動更新（5分ごと）でフィードを読み取り
+- GPS や手動ボタンで POST された `HOME` / `CAMPUS` / `LAB` / `ELSE` が円盤に反映されます
+- 認証: 環境変数、または `.streamlit/secrets.toml`（`secrets.toml.example` を参照）
 
 ## 必要な環境変数
 
