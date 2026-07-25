@@ -46,7 +46,7 @@ def _api_base() -> Optional[str]:
 
 # 色配置（実物サイン写真と一致・対角分割）:
 #   上=緑 CAMPUS / 右=青 LAB / 下=黒 ELSE / 左=赤 HOME
-# フックは常に上固定。円盤を回転させて、選択中の色が上に来る。
+# フックは常に上固定。円盤を中心(140,158)で回転させ、選択色の扇中央を上へ。
 STATUSES = {
     # 実物写真: 上緑 / 右青 / 下黒 / 左赤（対角の分割線）
     "CAMPUS": {
@@ -71,7 +71,7 @@ STATUSES = {
         "label": "自宅",
         "short": "自宅",
         "color": "#e22222",
-        "rotation": 90,  # 赤を上へ（時計回り）
+        "rotation": -270,  # 赤を上へ（他色と同じ反時計回り）
     },
 }
 
@@ -203,11 +203,7 @@ def dial_svg_html(active: Optional[str]) -> str:
     height: 100%;
     display: block;
   }}
-  .sign-rotor {{
-    transform-box: fill-box;
-    transform-origin: center;
-    transition: transform 0.6s cubic-bezier(.45,.05,.2,1);
-  }}
+  /* 回転は SVG の transform="rotate(deg cx cy)" のみ使う（CSS origin は使わない） */
   .sign-label {{
     font-size: 1.2rem;
     font-weight: 700;
@@ -337,9 +333,10 @@ def dial_svg_html(active: Optional[str]) -> str:
               stroke-linecap="butt"/>
       </g>
 
-      <!-- 回転する円盤 -->
-      <g class="sign-rotor" filter="url(#softShadow)" style="transform-origin:140px 158px;transform:rotate({rotation}deg)">
-        <!-- 4扇（対角分割）: 上緑・右青・下黒・左赤 -->
+      <!-- 回転する円盤：中心(140,158)で SVG ネイティブ回転（矢印は固定） -->
+      <g filter="url(#softShadow)">
+        <g transform="rotate({rotation} 140 158)">
+        <!-- 4扇（対角分割）: 上緑・右青・下黒・左赤。扇の中央が N/E/S/W -->
         <path d="M140,158 L60.8,78.8 A112,112 0 0,1 219.2,78.8 Z" fill="url(#gGreen)"/>
         <path d="M140,158 L219.2,78.8 A112,112 0 0,1 219.2,237.2 Z" fill="url(#gBlue)"/>
         <path d="M140,158 L219.2,237.2 A112,112 0 0,1 60.8,237.2 Z" fill="url(#gBlack)"/>
@@ -382,6 +379,7 @@ def dial_svg_html(active: Optional[str]) -> str:
         <ellipse cx="135" cy="152" rx="5.5" ry="3.8" fill="#fff" opacity="0.4"/>
         <circle cx="140" cy="158" r="5.5" fill="#7a4a22" opacity="0.55"/>
         <circle cx="140" cy="158" r="2.2" fill="#4a2a10" opacity="0.5"/>
+        </g>
       </g>
 
       <!-- 矢印（前面）：奥行きで表へ折り返し → 表側パイプはまっすぐ下降 -->
